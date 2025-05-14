@@ -3,72 +3,69 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class ProfileController extends Controller
 {
-     // Get User Profile
-     public function show(Request $request)
-     {
-         return response()->json([
-             'user' => $request->user()
-         ]);
-     }
+    public function show()
+    {
+        $user = Auth::user();
+        return response()->json([
+            'success' => true,
+            'data' => $user,
+        ]);
+    }
 
-     // Update User Profile
-     public function update(Request $request)
-     {
-         $user = $request->user();
 
-         $request->validate([
-             'name' => 'required|string|max:255',
-             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
-             'password' => 'nullable|string|min:8|confirmed',
-             'profile_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-             'no_telp' => 'nullable|string|max:15',
-             'umur' => 'nullable|integer|min:1',
-         ]);
+    public function update(Request $request)
+    {
+        $user = Auth::user();
 
-         $user->name = $request->name;
-         $user->email = $request->email;
-         $user->no_telp = $request->no_telp;
-         $user->umur = $request->umur;
 
-         if ($request->password) {
-             $user->password = Hash::make($request->password);
-         }
 
-         if ($request->hasFile('profile_photo')) {
-             if ($user->profile_photo) {
-                 Storage::disk('public')->delete($user->profile_photo);
-             }
-             $path = $request->file('profile_photo')->store('profile_photos', 'public');
-             $user->profile_photo = $path;
-         }
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'password' => 'nullable|string|min:8|confirmed',
+            'profile_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg',
+            'no_telp' => 'nullable|string|max:15',
+            'umur' => 'nullable|integer|min:1',
+        ]);
 
-         $user->save();
 
-         return response()->json([
-             'message' => 'Profil berhasil diperbarui',
-             'user' => $user
-         ]);
-     }
 
-     // Delete Account
-     public function destroy(Request $request)
-     {
-         $user = $request->user();
 
-         if ($user->profile_photo) {
-             Storage::disk('public')->delete($user->profile_photo);
-         }
+        $userModel = User::find($user->id);
 
-         $user->delete();
+        $userModel->name = $request->name;
+        $userModel->email = $request->email;
+        $userModel->no_telp = $request->no_telp;
+        $userModel->umur = $request->umur;
 
-         return response()->json([
-             'message' => 'Akun berhasil dihapus'
-         ]);
-     }
+        if ($request->password) {
+            $userModel->password = Hash::make($request->password);
+        }
+
+
+        if ($request->hasFile('profile_photo')) {
+            if ($userModel->profile_photo) {
+                Storage::delete($userModel->profile_photo);
+            }
+            $path = $request->file('profile_photo')->store('profile_photos', 'public');
+            $userModel->profile_photo = $path;
+        }
+
+        $userModel->save();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Profile updated successfully',
+            'data' => $userModel, // <- ini data yang sudah diupdate
+        ]);
+    }
 }
